@@ -7,7 +7,7 @@ import (
 type Weather struct {
 	Location   string
 	Descripton string
-	Time       time.Time
+	DateTime   time.Time
 	Temp       int
 	TempMax    int
 	TempMin    int

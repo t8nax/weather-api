@@ -5,8 +5,12 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
-	"github.com/t8nax/weather-api/internal/interfaces/adapter/service"
+	"github.com/t8nax/weather-api/internal/common"
 	"github.com/t8nax/weather-api/internal/interfaces/presenters/api"
+)
+
+const (
+	unexpectedErrMsg = "Oooops! An unexpected error occurred on the server"
 )
 
 func ErrorMiddleware(log logrus.FieldLogger) fiber.Handler {
@@ -27,19 +31,40 @@ func ErrorMiddleware(log logrus.FieldLogger) fiber.Handler {
 			return err
 		}
 
-		if isBadRequest(err) {
-			return ctx.Status(fiber.StatusBadRequest).JSON(&api.ErrorResponse{
-				Error: err.Error(),
+		var appErr *common.AppError
+		if !errors.As(err, &appErr) {
+			return ctx.Status(fiber.StatusInternalServerError).JSON(&api.ErrorResponse{
+				Error: unexpectedErrMsg,
 			})
 		}
 
-		return ctx.Status(fiber.StatusInternalServerError).JSON(&api.ErrorResponse{
-			Error: api.ErrInternalError.Error(),
+		status := toStatusCode(appErr.Code)
+		msg := toMessage(appErr.Code)
+
+		return ctx.Status(status).JSON(&api.ErrorResponse{
+			Error: msg,
 		})
 	}
 }
 
-func isBadRequest(err error) bool {
-	return errors.Is(err, service.ErrInvalidLocation) || errors.Is(err, api.ErrInvalidLocation) ||
-		errors.Is(err, service.ErrInvalidYear) || errors.Is(err, api.ErrInvalidDate)
+func toMessage(code common.AppErrorCode) string {
+	switch code {
+	case common.CodeInvalidLocation:
+		return "Invalid location parameter"
+	case common.CodeInvalidDate:
+		return "Invalid date parameter"
+	case common.CodeServiceError:
+		return "Weather service is unavailable. Please try later"
+	default:
+		return unexpectedErrMsg
+	}
+}
+
+func toStatusCode(code common.AppErrorCode) int {
+	switch code {
+	case common.CodeInvalidLocation, common.CodeInvalidDate:
+		return fiber.StatusBadRequest
+	default:
+		return fiber.StatusInternalServerError
+	}
 }

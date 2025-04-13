@@ -9,7 +9,8 @@ import (
 )
 
 type VCrossingResponse struct {
-	Days []VCrossingDay `json:"days"`
+	Days              []VCrossingDay             `json:"days"`
+	CurrentConditions VCrossingCurrentConditions `json:"currentConditions"`
 }
 
 type VCrossingDay struct {
@@ -25,6 +26,14 @@ type VCrossingDay struct {
 
 type VCrossingHour struct {
 	Time       string  `json:"datetime"`
+	Temp       float64 `json:"temp"`
+	Humidity   float64 `json:"humidity"`
+	CloudCover float64 `json:"cloudcover"`
+	WindSpeed  float64 `json:"windspeed"`
+}
+
+type VCrossingCurrentConditions struct {
+	Timestamp  int64   `json:"datetimeEpoch"`
 	Temp       float64 `json:"temp"`
 	Humidity   float64 `json:"humidity"`
 	CloudCover float64 `json:"cloudcover"`
@@ -55,6 +64,16 @@ func FromVCrossingHour(hour VCrossingHour) (entity.Weather, error) {
 		Humidity: int(math.Round(hour.Humidity)),
 		Cloudy:   int(math.Round(hour.CloudCover)),
 		Wind:     int(math.Round(hour.WindSpeed)),
-		Time:     t,
+		DateTime: t,
 	}, nil
+}
+
+func FromVCrossingCurrentConditions(conditions VCrossingCurrentConditions) entity.Weather {
+	return entity.Weather{
+		Temp:     int(math.Round(conditions.Temp)),
+		Humidity: int(math.Round(conditions.Humidity)),
+		Cloudy:   int(math.Round(conditions.CloudCover)),
+		Wind:     int(math.Round(conditions.WindSpeed)),
+		DateTime: time.Unix(conditions.Timestamp, 0),
+	}
 }

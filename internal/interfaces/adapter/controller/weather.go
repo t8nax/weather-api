@@ -1,11 +1,14 @@
 package controller
 
 import (
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/t8nax/weather-api/internal/application/usecase"
+	"github.com/t8nax/weather-api/internal/common"
 	"github.com/t8nax/weather-api/internal/interfaces/presenters/api"
 )
 
@@ -28,7 +31,7 @@ func (c *weatherController) GetCurrentWeather() fiber.Handler {
 		location := ctx.Query("location")
 
 		if location == "" {
-			return api.ErrInvalidLocation
+			return common.NewAppError(common.CodeInvalidLocation, errors.New("invalid location from request"))
 		}
 
 		weather, err := c.uCase.GetCurrent(location)
@@ -37,7 +40,7 @@ func (c *weatherController) GetCurrentWeather() fiber.Handler {
 			return err
 		}
 
-		response := api.ToDailyWeather(weather)
+		response := api.ToCurrentWeather(weather)
 
 		return ctx.JSON(response)
 	}
@@ -47,15 +50,14 @@ func (c *weatherController) GetHourlyWeather() fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
 		location := ctx.Query("location")
 
-		if location == "" {
-			return api.ErrInvalidLocation
+		if err := checkLocation(location); err != nil {
+			return err
 		}
 
-		dateParam := ctx.Query("date")
-		date, err := time.Parse("2006-01-02", dateParam)
+		date, err := parseDate(ctx.Query("date"))
 
 		if err != nil {
-			return api.ErrInvalidDate
+			return err
 		}
 
 		weathers, err := c.uCase.GetHourly(location, date)
@@ -72,4 +74,22 @@ func (c *weatherController) GetHourlyWeather() fiber.Handler {
 
 		return ctx.JSON(response)
 	}
+}
+
+func checkLocation(location string) error {
+	if location == "" {
+		return common.NewAppError(common.CodeInvalidLocation, fmt.Errorf("invalid location: %s", location))
+	}
+
+	return nil
+}
+
+func parseDate(dateStr string) (time.Time, error) {
+	date, err := time.Parse("2006-01-02", dateStr)
+
+	if err != nil {
+		return time.Time{}, common.NewAppError(common.CodeInvalidDate, errors.New("invalid year from request"))
+	}
+
+	return date, nil
 }

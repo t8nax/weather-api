@@ -8,14 +8,10 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/t8nax/weather-api/internal/application/port"
+	"github.com/t8nax/weather-api/internal/common"
 	"github.com/t8nax/weather-api/internal/entity"
 	presenters "github.com/t8nax/weather-api/internal/interfaces/presenters/service"
 	http_client "github.com/t8nax/weather-api/pkg/http"
-)
-
-var (
-	ErrInvalidLocation = errors.New("Invalid location parameter")
-	ErrInvalidYear     = errors.New("Invalid year. Year must be between 1950 and 2050")
 )
 
 type visualCrossingService struct {
@@ -35,18 +31,13 @@ func (r *visualCrossingService) GetCurrent(location string) (entity.Weather, err
 	err := client.Get(url, &resp)
 
 	if err != nil {
-		return entity.Weather{}, checkErr(err)
+		return entity.Weather{}, convertErr(err)
 	}
 
-	if len(resp.Days) == 0 {
-		return entity.Weather{}, errors.New("unable to find days in response")
-	}
+	weather := presenters.FromVCrossingCurrentConditions(resp.CurrentConditions)
+	weather.Location = location
 
-	entity := presenters.FromVCrossingDay(resp.Days[0])
-	entity.Time = time.Now()
-	entity.Location = location
-
-	return entity, nil
+	return weather, nil
 }
 
 func (r *visualCrossingService) GetHourly(location string, date time.Time) ([]entity.Weather, error) {
@@ -60,17 +51,22 @@ func (r *visualCrossingService) GetHourly(location string, date time.Time) ([]en
 	err := client.Get(url, &resp)
 
 	if err != nil {
-		return nil, checkErr(err)
+		r.log.WithFields(logrus.Fields{
+			"location": location,
+			"date":     date.Format("2006-01-02"),
+		}).WithError(err).Error("Failed to get hourly weather")
+
+		return nil, convertErr(err)
 	}
 
 	if len(resp.Days) == 0 {
-		return nil, errors.New("unable to find days in response")
+		return nil, common.NewAppError(common.CodeServiceError, errors.New("unable to find days in response"))
 	}
 
 	hours := resp.Days[0].Hours
 
 	if len(hours) == 0 {
-		return nil, errors.New("unable to find hours in response")
+		return nil, common.NewAppError(common.CodeServiceError, errors.New("unable to find hours in response"))
 	}
 
 	weather := make([]entity.Weather, len(hours))
@@ -79,14 +75,14 @@ func (r *visualCrossingService) GetHourly(location string, date time.Time) ([]en
 		weather[i], err = presenters.FromVCrossingHour(hour)
 
 		if err != nil {
-			return nil, err
+			return nil, common.NewAppError(common.CodeServiceError, err)
 		}
 	}
 
 	return weather, nil
 }
 
-func checkErr(err error) error {
+func convertErr(err error) error {
 	const invalidLocationMsg = "Bad API Request:Invalid location parameter value."
 	const invalidYearMsg = "Bad API Request:Invalid year requested. Years must be between 1950 and 2050"
 
@@ -94,11 +90,11 @@ func checkErr(err error) error {
 
 	if errors.As(err, &httpErr) && httpErr.Status == http.StatusBadRequest && httpErr.Body == invalidLocationMsg {
 		if httpErr.Body == invalidLocationMsg {
-			return ErrInvalidLocation
+			return common.NewAppError(common.CodeInvalidLocation, errors.New("invalid location parameter"))
 		}
 
 		if httpErr.Body == invalidYearMsg {
-			return ErrInvalidYear
+			return common.NewAppError(common.CodeInvalidDate, errors.New("invalid date"))
 		}
 	}
 
