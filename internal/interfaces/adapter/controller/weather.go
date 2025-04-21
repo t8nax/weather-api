@@ -15,6 +15,7 @@ import (
 type WeatherController interface {
 	GetCurrentWeather() fiber.Handler
 	GetHourlyWeather() fiber.Handler
+	GetDailyWeather() fiber.Handler
 }
 
 type weatherController struct {
@@ -71,6 +72,32 @@ func (c *weatherController) GetHourlyWeather() fiber.Handler {
 		for i, weather := range weathers {
 			response[i] = api.ToHourlyWeather(weather)
 		}
+
+		return ctx.JSON(response)
+	}
+}
+
+func (c *weatherController) GetDailyWeather() fiber.Handler {
+	return func(ctx *fiber.Ctx) error {
+		location := ctx.Query("location")
+
+		if err := checkLocation(location); err != nil {
+			return err
+		}
+
+		date, err := parseDate(ctx.Query("date"))
+
+		if err != nil {
+			return err
+		}
+
+		weather, err := c.uCase.GetDaily(location, date)
+
+		if err != nil {
+			return err
+		}
+
+		response := api.ToDailyWeather(weather)
 
 		return ctx.JSON(response)
 	}

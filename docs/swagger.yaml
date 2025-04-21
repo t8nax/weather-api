@@ -21,6 +21,31 @@ paths:
       summary: Getting Weather Info for now
       tags:
       - Weather
+  /api/weather/daily:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Location (ex. 'Moscow')
+        in: query
+        name: location
+        required: true
+        type: string
+      - description: Date (ex. '2000-05-30')
+        in: query
+        name: date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Getting Daily Weather Info
+      tags:
+      - Weather
   /api/weather/hourly:
     get:
       consumes:

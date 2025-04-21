@@ -9,4 +9,5 @@ import (
 type WeatherService interface {
 	GetCurrent(location string) (entity.Weather, error)
 	GetHourly(location string, date time.Time) ([]entity.Weather, error)
+	GetDaily(location string, date time.Time) (entity.Weather, error)
 }

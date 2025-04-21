@@ -5,13 +5,13 @@ import (
 )
 
 type Weather struct {
-	Location   string
-	Descripton string
-	DateTime   time.Time
-	Temp       int
-	TempMax    int
-	TempMin    int
-	Humidity   int
-	Cloudy     int
-	Wind       int
+	Location    string
+	Description string
+	DateTime    time.Time
+	Temp        int
+	TempMax     int
+	TempMin     int
+	Humidity    int
+	Cloudy      int
+	Wind        int
 }

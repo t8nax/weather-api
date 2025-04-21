@@ -8,7 +8,7 @@ import (
 
 func (r *registry) NewWeatherController() controller.WeatherController {
 	api := service.NewVisualCrossingService(r.api_key, r.log)
-	srv := usecase.NewWeather(api, nil, r.log)
+	srv := usecase.NewWeather(api, nil)
 
 	return controller.NewWeatherController(srv, r.log)
 }
